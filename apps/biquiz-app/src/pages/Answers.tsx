@@ -10,8 +10,12 @@ import { useTranslation } from 'react-i18next';
 const Answers: React.FC = () => {
   const choices = useQuizStore((s) => s.choices);
   const categoryId = useQuizStore((s) => s.categoryId);
-  const { data: questions = [] } = useQuestions(categoryId);
+  const { data: allQuestions = [] } = useQuestions(categoryId);
   const { t } = useTranslation();
+  const questions = [...choices]
+    .reverse()
+    .map((c) => allQuestions.find((q) => q.id === c.question_id))
+    .filter((q): q is NonNullable<typeof q> => !!q);
 
   const checkQuestionValidated = (question_id: number) => {
     const question = questions.find(q => q.id === question_id);

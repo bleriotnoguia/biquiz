@@ -20,6 +20,7 @@ const fetchCategories = async (lang: string): Promise<CategoryConfig[]> => {
     .from('question_categories')
     .select('id,level,is_active,parent_id, name:question_category_translations(name)')
     .eq('question_category_translations.locale', lang)
+    .eq('is_active', true)
 
   if (error) throw new Error(error.message)
 

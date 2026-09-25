@@ -1,17 +1,8 @@
-.titleStyle {
-  text-align: center;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #555;
-  padding: 14px 16px 4px;
-  letter-spacing: 0.3px;
-}
-
 .categoriesGrid {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 8px 16px 24px;
+  padding: 16px 16px 24px;
 }
 
 /* Responsive 2-column on wider screens */

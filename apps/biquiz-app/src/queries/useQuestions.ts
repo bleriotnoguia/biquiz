@@ -37,6 +37,7 @@ const fetchQuestions = async (category_id: string, lang: string): Promise<Questi
       options:question_options(id, name:question_option_translations(name, locale), is_correct)`
     )
     .eq('question_category_id', category_id)
+    .eq('is_active', true)
 
   if (error) throw new Error(error.message)
 

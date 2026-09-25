@@ -9,7 +9,9 @@ import {
   setupIonicReact,
 } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
-import { Route as RouterRoute, RouteProps } from "react-router-dom";
+import { useEffect } from "react";
+import { Route as RouterRoute, RouteProps, useLocation } from "react-router-dom";
+import { track } from "./utils/analytics";
 import About from "./pages/About";
 import Answers from "./pages/Answers";
 import GameDetails from "./pages/GameDetails";
@@ -35,10 +37,23 @@ const Route = RouterRoute as React.ComponentType<RouteProps>;
 
 setupIonicReact();
 
+const PageViewTracker: React.FC = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    track("page_view", { path: pathname });
+  }, [pathname]);
+  return null;
+};
+
 const App: React.FC = () => {
+  useEffect(() => {
+    track("app_open");
+  }, []);
+
   return (
     <IonApp>
       <IonReactRouter>
+        <PageViewTracker />
         <IonTabs>
           <IonRouterOutlet>
             <Route path="/settings" component={Settings} exact />

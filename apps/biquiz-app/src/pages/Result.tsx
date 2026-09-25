@@ -6,6 +6,7 @@ import { useQuestions } from '../queries/useQuestions';
 import { useHistory, useParams } from 'react-router-dom';
 import { checkIsCorrect, getStars } from '../utils';
 import { useTranslation } from 'react-i18next';
+import { track } from '../utils/analytics';
 
 const Result: React.FC = () => {
   const choices = useQuizStore((s) => s.choices);
@@ -21,6 +22,7 @@ const Result: React.FC = () => {
 
   const replay = () => {
     deleteChoices();
+    track('quiz_start', { category_id: Number(category_id) });
     history.push(`/page/quiz/category/${category_id}`);
   };
 

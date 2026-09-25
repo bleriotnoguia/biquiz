@@ -11,7 +11,7 @@ import {
   IonToolbar,
 } from "@ionic/react";
 import { checkmarkCircle, closeCircle } from "ionicons/icons";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useHistory } from "react-router-dom";
 import { QuestionOption } from "@biquiz/shared";
@@ -19,18 +19,28 @@ import { useQuestions } from "../../queries/useQuestions";
 import { useQuizStore } from "../../stores/useQuizStore";
 import { useScoresStore } from "../../stores/useScoresStore";
 import { useSettingsStore } from "../../stores/useSettingsStore";
-import { checkIsCorrect } from "../../utils";
+import { checkIsCorrect, shuffle } from "../../utils";
+import { track } from "../../utils/analytics";
 import QuizLoading from "../home/QuizLoading";
 import FeedBack from "./FeedBack";
 import "./Quiz.css";
 
-const LETTERS = ['A', 'B', 'C', 'D', 'E'];
+const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+const QUIZ_LENGTH = 20;
 
 const Quiz: React.FC = () => {
   const displaySource = useSettingsStore((s) => s.displaySource);
   const { choices, addChoice, setCategoryId } = useQuizStore();
-  const { data: questions = [], isLoading } = useQuestions(
+  const { data, isLoading } = useQuestions(
     useParams<{ category_id: string }>().category_id
+  );
+  // Memoized on the query data so a background refetch with identical content keeps the order.
+  const questions = useMemo(
+    () =>
+      shuffle(data ?? [])
+        .slice(0, QUIZ_LENGTH)
+        .map((q) => ({ ...q, options: shuffle(q.options) })),
+    [data]
   );
   const setScore = useScoresStore((s) => s.setScore);
   const scores = useScoresStore((s) => s.data);
@@ -67,9 +77,13 @@ const Quiz: React.FC = () => {
     if (nextQuizIndex < questions.length) {
       setQuestionIndex(nextQuizIndex);
     } else {
-      const stars_won = choices.length > 0
-        ? (choices.filter((item) => checkIsCorrect(item, questions)).length * 5) / choices.length
-        : 0;
+      const correct_count = choices.filter((item) => checkIsCorrect(item, questions)).length;
+      const stars_won = choices.length > 0 ? (correct_count * 5) / choices.length : 0;
+      track('quiz_complete', {
+        category_id: Number(category_id),
+        correct_count,
+        total_count: choices.length,
+      });
       const category_score = scores.length ? scores.find(s => s.category_id === category_id) : undefined;
       if (!category_score || category_score.stars < stars_won) {
         setScore({ category_id, stars: stars_won });
