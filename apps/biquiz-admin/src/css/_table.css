@@ -56,6 +56,26 @@
   tbody tr:nth-child(odd) {
     @apply lg:bg-slate-50/60 lg:dark:bg-slate-800/30;
   }
+
+  tbody tr.is-selected,
+  tbody tr.is-selected:nth-child(odd) {
+    @apply lg:bg-indigo-50 lg:dark:bg-indigo-950/40;
+  }
+
+  td.question-cell {
+    @apply flex-col items-start text-left gap-1 whitespace-normal min-w-0;
+  }
+
+  @screen lg {
+    th.question-col,
+    td.question-cell {
+      @apply min-w-[28rem] w-[46%];
+    }
+
+    td.question-cell {
+      @apply table-cell align-middle;
+    }
+  }
   
   td:before {
     content: attr(data-label);

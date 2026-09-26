@@ -10,7 +10,7 @@ import TableQuestions from '@/modules/admin/components/Table/Questions'
 const QuestionsPage = () => {
   return (
     <>
-      <SectionMain>
+      <SectionMain wide>
         <SectionTitleLineWithButton icon={mdiTableBorder} title="Questions" main>
           <Button
             href="https://biquiz.bleriotnoguia.com"

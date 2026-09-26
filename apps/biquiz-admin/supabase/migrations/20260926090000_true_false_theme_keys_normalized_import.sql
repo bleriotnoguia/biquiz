@@ -36,8 +36,8 @@ END $$;
 -- TRUE / FALSE QUESTION TYPE
 -- ============================================================
 
-INSERT INTO public.question_types (code)
-SELECT 'true_false'
+INSERT INTO public.question_types (id, code)
+SELECT COALESCE((SELECT max(id) FROM public.question_types), 0) + 1, 'true_false'
 WHERE NOT EXISTS (SELECT 1 FROM public.question_types WHERE code = 'true_false');
 
 INSERT INTO public.question_type_translations (question_type_id, locale, name)

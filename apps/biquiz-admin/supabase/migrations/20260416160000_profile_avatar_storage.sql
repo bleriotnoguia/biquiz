@@ -23,6 +23,9 @@ BEGIN
   USING (bucket_id = 'avatars');
 EXCEPTION
   WHEN duplicate_object THEN null;
+  -- storage.objects is owned by supabase_storage_admin, so the migration role
+  -- cannot create policies there (42501). The dashboard may already have done it.
+  WHEN insufficient_privilege THEN null;
 END $$;
 
 DO $$
@@ -37,6 +40,7 @@ BEGIN
   );
 EXCEPTION
   WHEN duplicate_object THEN null;
+  WHEN insufficient_privilege THEN null;
 END $$;
 
 DO $$
@@ -55,6 +59,7 @@ BEGIN
   );
 EXCEPTION
   WHEN duplicate_object THEN null;
+  WHEN insufficient_privilege THEN null;
 END $$;
 
 DO $$
@@ -69,4 +74,5 @@ BEGIN
   );
 EXCEPTION
   WHEN duplicate_object THEN null;
+  WHEN insufficient_privilege THEN null;
 END $$;
