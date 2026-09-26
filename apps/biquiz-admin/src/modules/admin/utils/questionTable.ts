@@ -18,6 +18,7 @@ export type QuestionListItem = {
 
 export type NamedLookup = {
   id: number
+  code?: string
   translate?: { locale: string; name: string }[] | null
 }
 

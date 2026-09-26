@@ -19,6 +19,7 @@ import {
   NamedLookup,
   pageWindow,
 } from '@/modules/admin/utils/questionTable'
+import { optionsForType } from '@/modules/admin/utils/questionForm'
 
 const PAGE_SIZES = [10, 25, 50]
 const selectClass =
@@ -210,6 +211,14 @@ const TableQuestions = () => {
     setPendingDeleteIds([])
   }
 
+  const typeCode = (typeId: number | string | undefined) =>
+    types.find((type) => String(type.id) === String(typeId))?.code
+
+  const applyType = (typeId: number | string | undefined, current = options) => {
+    const next = optionsForType(typeCode(typeId), current)
+    if (next !== current) setOptions(next)
+  }
+
   const handleChangeOption = (index: number, lang: keyof IOption, value: string | boolean) => {
     const newInputs = [...options]
     newInputs[index][lang] = value
@@ -252,11 +261,13 @@ const TableQuestions = () => {
   }
 
   const tabs: ITabs = [
-    { id: 1, name: 'First step', content: <QuestionFormStepOne /> },
+    { id: 1, name: 'First step', content: <QuestionFormStepOne types={types} typeCode={typeCode(question.type_id)} /> },
     {
       id: 2,
       name: 'Second step',
-      content: <QuestionFormStepTwo options={options} handleChangeOption={handleChangeOption} />,
+      content: (
+        <QuestionFormStepTwo options={options} typeCode={typeCode(question.type_id)} handleChangeOption={handleChangeOption} />
+      ),
     },
   ]
 
@@ -287,10 +298,25 @@ const TableQuestions = () => {
         onConfirm={handleModalSubmitBtn}
         onCancel={handleCloseModal}
       >
-        <Formik innerRef={formRef} initialValues={question} onSubmit={handleSubmit}>
-          <Form>
+        <Formik
+          innerRef={formRef}
+          initialValues={question}
+          enableReinitialize
+          onSubmit={(values) => handleSubmit({ ...values, options })}
+        >
+          {({ values, setFieldValue }) => (
+          <Form
+            onChange={(event) => {
+              const target = event.target as HTMLInputElement
+              if (target.name !== 'type_id' || target.value === String(values.type_id)) return
+              setFieldValue('type_id', Number(target.value))
+              setQuestion((prev) => ({ ...prev, type_id: Number(target.value) }))
+              applyType(target.value)
+            }}
+          >
             <Tabs tabs={tabs} />
           </Form>
+          )}
         </Formik>
       </CardBoxModal>
 
