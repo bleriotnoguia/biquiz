@@ -1,29 +1,92 @@
-import { IonAlert, IonBackButton, IonButtons, IonContent, IonHeader, IonItem, IonLabel, IonList, IonPage, IonTitle, IonToolbar } from '@ionic/react';
-import {useState} from 'react'
-import {SocialSharing} from '@awesome-cordova-plugins/social-sharing'
+import {
+  IonBackButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonListHeader,
+  IonPage,
+  IonTitle,
+  IonToolbar,
+} from '@ionic/react';
+import {
+  bookSharp,
+  bulbOutline,
+  codeSlashOutline,
+  documentTextOutline,
+  gridOutline,
+  libraryOutline,
+  lockOpenOutline,
+  mailOutline,
+  schoolOutline,
+  shareSocialOutline,
+  shieldCheckmarkOutline,
+  starOutline,
+  sparklesOutline,
+} from 'ionicons/icons';
+import { useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
+import { Share } from '@capacitor/share';
 import { useTranslation } from 'react-i18next';
+import { useSettingsStore } from '../stores/useSettingsStore';
+import { STARS_PER_LEVEL } from '../utils';
+import './About.css';
 
 const DEV_EMAIL = 'contact@bleriotnoguia.com';
-const APP_URL = 'https://www.bleriotnoguia.com';
+const DEV_URL = 'https://www.bleriotnoguia.com';
+const APP_URL = 'https://biquiz.bleriotnoguia.com';
+const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.bleriotnoguia.biquiz';
+const BIBLE_URL = 'https://wol.jw.org';
+const ICONS_URL = 'https://ionic.io/ionicons';
+
+const openUrl = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
+
+const sendEmail = (subject: string, body: string) => {
+  window.location.href = `mailto:${DEV_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+};
 
 const About: React.FC = () => {
+  const { t } = useTranslation();
+  const language = useSettingsStore((s) => s.language);
+  const quizLength = useSettingsStore((s) => s.quizLength);
+  const [version, setVersion] = useState(__APP_VERSION__);
 
-  const [showAlert, setShowAlert] = useState(false);
-  const {t} = useTranslation();
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    App.getInfo()
+      .then((info) => setVersion(info.version))
+      .catch(() => {});
+  }, []);
 
-  const contactDev = () => {
-    SocialSharing.shareViaEmail('Body', 'Utilisateur de biquiz', [DEV_EMAIL]).catch(() => {
-      // Email sharing not available on this device — silently ignore
-    });
-  }
+  const deviceInfo = `\n\n---\nBiquiz ${version} · ${Capacitor.getPlatform()} · ${language}`;
 
-  const shareApp = () => {
-    SocialSharing.share("J'ai utilisé cette application et je pense que toi aussi tu l'apprécieras", "Merci d'installer cette application", "", "biquiz.bleriotnoguia.com")
-  }
+  const contactDev = () => sendEmail(t('contactSubject'), deviceInfo);
 
-  const openWebsite = () => {
-    window.open(APP_URL, '_blank', 'noopener,noreferrer');
-  }
+  const suggestQuestion = () => sendEmail(t('suggestSubject'), t('suggestTemplate') + deviceInfo);
+
+  const shareApp = async () => {
+    try {
+      await Share.share({
+        title: 'Biquiz',
+        text: t('shareAppText') ?? '',
+        url: APP_URL,
+        dialogTitle: t('shareApp') ?? '',
+      });
+    } catch {
+      // Share dismissed or unsupported on this platform.
+    }
+  };
+
+  const howItWorks = [
+    { icon: gridOutline, text: t('howToChoose', { count: quizLength }) },
+    { icon: starOutline, text: t('howToStars') },
+    { icon: lockOpenOutline, text: t('howToUnlock', { count: STARS_PER_LEVEL }) },
+    { icon: schoolOutline, text: t('howToReview') },
+  ];
 
   return (
     <IonPage>
@@ -37,45 +100,92 @@ const About: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
-      <IonList>
-        <IonItem>
-          <IonLabel onClick={() => contactDev()}>
-            <h3>{t('contactDev')}</h3>
-            <p color="gray">{t('emailDev')}</p>
-          </IonLabel>
-        </IonItem>
-        <IonItem>
-          <IonLabel onClick={() => shareApp()}>
-            <h3>{t('share')}</h3>
-            <p color="gray">{t('shareApp')}</p>
-          </IonLabel>
-        </IonItem>
-        <IonItem>
-          <IonLabel onClick={openWebsite}>
-            <h3>{t('rate')}</h3>
-            <p color="gray">{t('rateApp')}</p>
-          </IonLabel>
-        </IonItem>
-        <IonItem>
-          <IonAlert
-            isOpen={showAlert}
-            onDidDismiss={() => setShowAlert(false)}
-            header={'Coming soon'}
-            message={'Ce contenu est en cours de rédaction.'}
-            buttons={['OK']}
-          />
-          <IonLabel onClick={() => setShowAlert(true)}>
-            <h3>{t('privacyRule')}</h3>
-            <p color="gray">{t('clickForMoreInfo')}</p>
-          </IonLabel>
-        </IonItem>
-        <IonItem>
-          <IonLabel>
-            <h3>{t('versionApp')}</h3>
-            <p color="gray">1.0</p>
-          </IonLabel>
-        </IonItem>
-      </IonList>
+        <div className="about-hero">
+          <div className="about-logo">
+            <IonIcon icon={bookSharp} />
+          </div>
+          <h1 className="about-name">Biquiz</h1>
+          <p className="about-tagline">{t('aboutTagline')}</p>
+          <span className="about-version">
+            {t('versionApp')} {version}
+          </span>
+        </div>
+
+        <IonList>
+          <IonListHeader>
+            <IonLabel>{t('howItWorks')}</IonLabel>
+          </IonListHeader>
+          {howItWorks.map((item) => (
+            <IonItem key={item.text} lines="none">
+              <IonIcon icon={item.icon} slot="start" color="primary" />
+              <IonLabel className="ion-text-wrap about-howto">{item.text}</IonLabel>
+            </IonItem>
+          ))}
+
+          <IonListHeader>
+            <IonLabel>{t('aboutContact')}</IonLabel>
+          </IonListHeader>
+          <IonItem button onClick={contactDev}>
+            <IonIcon icon={mailOutline} slot="start" />
+            <IonLabel>
+              <h3>{t('contactDev')}</h3>
+              <p>{t('emailDev')}</p>
+            </IonLabel>
+          </IonItem>
+          <IonItem button onClick={suggestQuestion}>
+            <IonIcon icon={bulbOutline} slot="start" />
+            <IonLabel>
+              <h3>{t('suggestQuestion')}</h3>
+              <p>{t('suggestQuestionHint')}</p>
+            </IonLabel>
+          </IonItem>
+          <IonItem button onClick={() => openUrl(PLAY_STORE_URL)}>
+            <IonIcon icon={sparklesOutline} slot="start" />
+            <IonLabel>
+              <h3>{t('rate')}</h3>
+              <p>{t('rateApp')}</p>
+            </IonLabel>
+          </IonItem>
+          <IonItem button onClick={shareApp}>
+            <IonIcon icon={shareSocialOutline} slot="start" />
+            <IonLabel>
+              <h3>{t('share')}</h3>
+              <p>{t('shareApp')}</p>
+            </IonLabel>
+          </IonItem>
+
+          <IonListHeader>
+            <IonLabel>{t('aboutInfo')}</IonLabel>
+          </IonListHeader>
+          <IonItem button routerLink="/privacy">
+            <IonIcon icon={shieldCheckmarkOutline} slot="start" />
+            <IonLabel>
+              <h3>{t('privacyRule')}</h3>
+              <p>{t('privacyHint')}</p>
+            </IonLabel>
+          </IonItem>
+          <IonItem button onClick={() => openUrl(BIBLE_URL)}>
+            <IonIcon icon={libraryOutline} slot="start" />
+            <IonLabel>
+              <h3>{t('creditBible')}</h3>
+              <p>wol.jw.org</p>
+            </IonLabel>
+          </IonItem>
+          <IonItem button onClick={() => openUrl(DEV_URL)}>
+            <IonIcon icon={codeSlashOutline} slot="start" />
+            <IonLabel>
+              <h3>{t('creditDev')}</h3>
+              <p>Blériot Noguia</p>
+            </IonLabel>
+          </IonItem>
+          <IonItem button onClick={() => openUrl(ICONS_URL)}>
+            <IonIcon icon={documentTextOutline} slot="start" />
+            <IonLabel>
+              <h3>{t('creditIcons')}</h3>
+              <p>Ionicons</p>
+            </IonLabel>
+          </IonItem>
+        </IonList>
       </IonContent>
     </IonPage>
   );

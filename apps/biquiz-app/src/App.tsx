@@ -13,12 +13,14 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Route, useLocation } from "react-router-dom";
 import { track } from "./utils/analytics";
+import { useSettingsStore } from "./stores/useSettingsStore";
 import About from "./pages/About";
 import Answers from "./pages/Answers";
 import GameDetails from "./pages/GameDetails";
 import Games from "./pages/Games";
 import Home from "./pages/home/Home";
 import Quiz from "./pages/quiz/Quiz";
+import Privacy from "./pages/Privacy";
 import Progress from "./pages/Progress";
 import Result from "./pages/Result";
 import Settings from "./pages/Settings";
@@ -45,6 +47,27 @@ const PageViewTracker: React.FC = () => {
   return null;
 };
 
+const AppearanceSync: React.FC = () => {
+  const theme = useSettingsStore((s) => s.theme);
+  const fontSize = useSettingsStore((s) => s.fontSize);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () =>
+      document.body.classList.toggle("dark", theme === "dark" || (theme === "system" && media.matches));
+    apply();
+    if (theme !== "system") return;
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("large-text", fontSize === "large");
+  }, [fontSize]);
+
+  return null;
+};
+
 const App: React.FC = () => {
   const { t } = useTranslation();
 
@@ -56,6 +79,7 @@ const App: React.FC = () => {
     <IonApp>
       <IonReactRouter>
         <PageViewTracker />
+        <AppearanceSync />
         <IonTabs>
           <IonRouterOutlet>
             <Route path="/settings" element={<Settings />} />
@@ -63,7 +87,8 @@ const App: React.FC = () => {
             <Route path="/" element={<Home />} />
             <Route path="/page/quiz/category/:category_id" element={<Quiz />} />
             <Route path="/page/result/:category_id" element={<Result />} />
-            <Route path="/page/answers" element={<Answers />} />
+            <Route path="/page/answers/:category_id" element={<Answers />} />
+            <Route path="/privacy" element={<Privacy />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/games" element={<Games />} />
             <Route path="/page/game/:id" element={<GameDetails />} />

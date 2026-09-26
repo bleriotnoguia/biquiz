@@ -1,5 +1,6 @@
 import {
   IonBackButton,
+  IonButton,
   IonButtons,
   IonContent,
   IonHeader,
@@ -13,7 +14,8 @@ import {
   IonToolbar,
   useIonRouter,
 } from '@ionic/react';
-import { lockClosed, starSharp } from 'ionicons/icons';
+import { eyeSharp, lockClosed, playSharp, schoolSharp, starSharp } from 'ionicons/icons';
+import { useHistoryStore } from '../stores/useHistoryStore';
 import { useTranslation } from 'react-i18next';
 import { useCategories } from '../queries/useCategories';
 import { useQuizStore } from '../stores/useQuizStore';
@@ -27,6 +29,7 @@ const Progress: React.FC = () => {
   const { t } = useTranslation();
   const language = useSettingsStore((s) => s.language);
   const scores = useScoresStore((s) => s.data);
+  const attempts = useHistoryStore((s) => s.attempts);
   const deleteChoices = useQuizStore((s) => s.deleteChoices);
   const { data: categories = [] } = useCategories();
   const router = useIonRouter();
@@ -40,6 +43,11 @@ const Progress: React.FC = () => {
     deleteChoices();
     track('quiz_start', { category_id: id });
     router.push(`/page/quiz/category/${id}`);
+  };
+
+  const startReview = (id: number) => {
+    deleteChoices();
+    router.push(`/page/quiz/category/${id}?mode=review`);
   };
 
   return (
@@ -83,13 +91,10 @@ const Progress: React.FC = () => {
             const required = starsRequired(category.level);
             const isLock = totalStars < required;
             const stars = scores.find((s) => parseInt(s.category_id) === category.id)?.stars ?? 0;
+            const attempt = attempts[String(category.id)];
+            const mistakes = attempt?.mistakeIds.length ?? 0;
             return (
-              <IonItem
-                key={category.id}
-                button={!isLock}
-                detail={!isLock}
-                onClick={isLock ? undefined : () => startQuiz(category.id)}
-              >
+              <IonItem key={category.id} lines="full">
                 <IonLabel>
                   <h2>
                     {capitalizeFirstLetter(category.name)}
@@ -98,7 +103,27 @@ const Progress: React.FC = () => {
                   {isLock ? (
                     <p>{t('lockedTitle', { count: required })}</p>
                   ) : (
-                    <p className="progress-stars">{getStars(stars)}</p>
+                    <>
+                      <p className="progress-stars">{getStars(stars)}</p>
+                      <div className="progress-actions">
+                        <IonButton size="small" onClick={() => startQuiz(category.id)}>
+                          <IonIcon icon={playSharp} slot="start" />
+                          {t('play')}
+                        </IonButton>
+                        {attempt && (
+                          <IonButton size="small" fill="outline" routerLink={`/page/answers/${category.id}`}>
+                            <IonIcon icon={eyeSharp} slot="start" />
+                            {t('myAnswers')}
+                          </IonButton>
+                        )}
+                        {mistakes > 0 && (
+                          <IonButton size="small" fill="outline" color="warning" onClick={() => startReview(category.id)}>
+                            <IonIcon icon={schoolSharp} slot="start" />
+                            {t('mistakesCount', { count: mistakes })}
+                          </IonButton>
+                        )}
+                      </div>
+                    </>
                   )}
                 </IonLabel>
               </IonItem>

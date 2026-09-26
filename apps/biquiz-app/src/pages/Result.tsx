@@ -16,6 +16,7 @@ import {
   gridSharp,
   lockOpenSharp,
   refreshSharp,
+  schoolSharp,
   shareSocialOutline,
   shareSocialSharp,
   trophySharp,
@@ -27,7 +28,8 @@ import { useScoresStore } from '../stores/useScoresStore';
 import { useSettingsStore } from '../stores/useSettingsStore';
 import { useQuestions } from '../queries/useQuestions';
 import { useCategories } from '../queries/useCategories';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { useHistoryStore } from '../stores/useHistoryStore';
 import {
   capitalizeFirstLetter,
   checkIsCorrect,
@@ -57,6 +59,9 @@ const Result: React.FC = () => {
   const scores = useScoresStore((s) => s.data);
   const language = useSettingsStore((s) => s.language);
   const { category_id = '' } = useParams<{ category_id: string }>();
+  const [searchParams] = useSearchParams();
+  const isReview = searchParams.get('mode') === 'review';
+  const remainingMistakes = useHistoryStore((s) => s.attempts[category_id]?.mistakeIds.length ?? 0);
   const { data: questions = [] } = useQuestions(category_id);
   const { data: categories = [] } = useCategories();
   const { t } = useTranslation();
@@ -89,6 +94,11 @@ const Result: React.FC = () => {
     router.push(`/page/quiz/category/${id}`, 'forward', 'replace');
   };
 
+  const startReview = () => {
+    deleteChoices();
+    router.push(`/page/quiz/category/${category_id}?mode=review`, 'forward', 'replace');
+  };
+
   const shareScore = async () => {
     try {
       await Share.share({
@@ -111,12 +121,14 @@ const Result: React.FC = () => {
               <IonIcon slot="icon-only" icon={arrowBackSharp} />
             </IonButton>
           </IonButtons>
-          <IonTitle>{t('result')}</IonTitle>
-          <IonButtons slot="end">
-            <IonButton onClick={shareScore} aria-label={t('share') ?? ''}>
-              <IonIcon slot="icon-only" ios={shareSocialOutline} md={shareSocialSharp} />
-            </IonButton>
-          </IonButtons>
+          <IonTitle>{isReview ? t('reviewMistakes') : t('result')}</IonTitle>
+          {!isReview && (
+            <IonButtons slot="end">
+              <IonButton onClick={shareScore} aria-label={t('share') ?? ''}>
+                <IonIcon slot="icon-only" ios={shareSocialOutline} md={shareSocialSharp} />
+              </IonButton>
+            </IonButtons>
+          )}
         </IonToolbar>
       </IonHeader>
 
@@ -128,30 +140,39 @@ const Result: React.FC = () => {
             <span className="result-score-number">{correctCount}</span>
             <span className="result-score-total">/ {total}</span>
           </div>
-          <div className="result-stars">{getStars(stars)}</div>
-          {isNewRecord ? (
+          {!isReview && <div className="result-stars">{getStars(stars)}</div>}
+          {!isReview && isNewRecord && (
             <span className="result-record-badge">
               <IonIcon icon={trophySharp} /> {t('newRecord')}
             </span>
-          ) : (
-            previousBest !== null && (
-              <span className="result-record-badge muted">
-                {t('bestScore', { stars: formatStars(previousBest, language) })}
-              </span>
-            )
+          )}
+          {!isReview && !isNewRecord && previousBest !== null && (
+            <span className="result-record-badge muted">
+              {t('bestScore', { stars: formatStars(previousBest, language) })}
+            </span>
           )}
         </div>
 
         {/* Body */}
         <div className="result-body">
-          <div className="result-message-card">
-            <h2 className="result-message-title">{t(resultTitleKey(total > 0 ? correctCount / total : 0))}</h2>
-            <p className="result-message-desc">
-              {t('resultScore', { count: correctCount, total })}
-            </p>
-          </div>
+          {isReview ? (
+            <div className="result-message-card">
+              <h2 className="result-message-title">{t('reviewDone')}</h2>
+              <p className="result-message-desc">{t('reviewScore', { count: correctCount, total })}</p>
+              <p className="result-message-desc">
+                {remainingMistakes > 0 ? t('mistakesLeft', { count: remainingMistakes }) : t('noMistakesLeft')}
+              </p>
+            </div>
+          ) : (
+            <div className="result-message-card">
+              <h2 className="result-message-title">{t(resultTitleKey(total > 0 ? correctCount / total : 0))}</h2>
+              <p className="result-message-desc">
+                {t('resultScore', { count: correctCount, total })}
+              </p>
+            </div>
+          )}
 
-          {newlyUnlocked.length > 0 && (
+          {!isReview && newlyUnlocked.length > 0 && (
             <div className="result-unlock-card">
               <IonIcon icon={lockOpenSharp} className="result-unlock-icon" />
               <div>
@@ -165,7 +186,7 @@ const Result: React.FC = () => {
             </div>
           )}
 
-          {nextCategory && !nextIsUnlocked && (
+          {!isReview && nextCategory && !nextIsUnlocked && (
             <p className="result-next-hint">
               {t('nextThemeHint', {
                 missing: formatStars(missingForNext, language),
@@ -175,26 +196,46 @@ const Result: React.FC = () => {
           )}
 
           <div className="result-actions">
-            {nextCategory && nextIsUnlocked && (
+            {!isReview && nextCategory && nextIsUnlocked && (
               <IonButton expand="block" className="result-btn" color="primary" onClick={() => startQuiz(nextCategory.id)}>
                 {t('nextTheme')}
                 <IonIcon icon={arrowForwardSharp} slot="end" />
               </IonButton>
             )}
+            {isReview && remainingMistakes > 0 && (
+              <IonButton expand="block" className="result-btn" color="primary" onClick={startReview}>
+                <IonIcon icon={schoolSharp} slot="start" />
+                {t('reviewRemaining', { count: remainingMistakes })}
+              </IonButton>
+            )}
             <IonButton
               expand="block"
               className="result-btn"
-              fill={nextCategory && nextIsUnlocked ? 'outline' : 'solid'}
+              fill={(!isReview && nextCategory && nextIsUnlocked) || (isReview && remainingMistakes > 0) ? 'outline' : 'solid'}
               color="primary"
               onClick={() => startQuiz(category_id)}
             >
               <IonIcon icon={refreshSharp} slot="start" />
-              {t('replay')}
+              {isReview ? t('replayFullQuiz') : t('replay')}
             </IonButton>
-            <IonButton expand="block" className="result-btn" fill="outline" color="primary" routerLink="/page/answers">
-              <IonIcon icon={eyeSharp} slot="start" />
-              {t('displayAnswers')}
-            </IonButton>
+            {!isReview && remainingMistakes > 0 && (
+              <IonButton expand="block" className="result-btn" fill="outline" color="primary" onClick={startReview}>
+                <IonIcon icon={schoolSharp} slot="start" />
+                {t('reviewMistakesCount', { count: remainingMistakes })}
+              </IonButton>
+            )}
+            {!isReview && (
+              <IonButton
+                expand="block"
+                className="result-btn"
+                fill="outline"
+                color="primary"
+                routerLink={`/page/answers/${category_id}`}
+              >
+                <IonIcon icon={eyeSharp} slot="start" />
+                {t('displayAnswers')}
+              </IonButton>
+            )}
             <IonButton expand="block" className="result-btn" fill="clear" color="primary" routerLink="/" routerDirection="root">
               <IonIcon icon={gridSharp} slot="start" />
               {t('backToThemes')}

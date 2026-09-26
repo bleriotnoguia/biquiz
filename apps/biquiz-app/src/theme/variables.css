@@ -1,6 +1,10 @@
 /* Ionic Variables and Theming. For more info, please see:
 http://ionicframework.com/docs/theming/ */
 
+html.large-text {
+  font-size: 112.5%;
+}
+
 /** Ionic CSS Variables **/
 :root {
   /** primary **/

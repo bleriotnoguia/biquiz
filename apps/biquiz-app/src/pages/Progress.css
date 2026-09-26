@@ -47,6 +47,13 @@
   color: var(--ion-color-medium);
 }
 
+.progress-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .progress-stars {
   color: #FFD700 !important;
   font-size: 1rem;

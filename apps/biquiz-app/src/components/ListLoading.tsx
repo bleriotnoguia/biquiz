@@ -7,19 +7,15 @@ import {
   IonLabel,
   IonProgressBar,
 } from "@ionic/react";
-import styles from "./Home.module.css";
 import { useTranslation } from 'react-i18next';
 
-const QuizLoading: React.FC = () => {
+const ListLoading: React.FC = () => {
   const { t } = useTranslation()
   return (
     <>
-    <h3 className={styles.titleStyle}>
-      {t('loading')}
-    </h3>
     <IonProgressBar type="indeterminate"></IonProgressBar>
-    <IonList>
-      {[...(new Array(4))].map((item, index) => <IonItem key={index}>
+    <IonList aria-busy="true" aria-label={t('loading') ?? undefined}>
+      {Array.from({ length: 4 }, (_, index) => <IonItem key={index}>
           <IonAvatar slot="start">
             <IonSkeletonText animated />
           </IonAvatar>
@@ -40,4 +36,4 @@ const QuizLoading: React.FC = () => {
   )
 }
 
-export default QuizLoading
+export default ListLoading

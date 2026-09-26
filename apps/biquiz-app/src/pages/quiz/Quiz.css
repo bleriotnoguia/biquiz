@@ -24,6 +24,20 @@
   letter-spacing: 0.5px;
 }
 
+.quiz-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ion-color-medium);
+}
+
+.quiz-timer.urgent {
+  color: var(--ion-color-danger);
+}
+
 .quiz-question-text {
   font-size: 1.05rem;
   font-weight: 700;

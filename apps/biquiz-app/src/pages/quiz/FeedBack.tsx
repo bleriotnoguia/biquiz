@@ -11,7 +11,7 @@ interface Props {
   onReport: () => void;
   reported: boolean;
   isOpen: boolean;
-  feedback: { goodAnswer: QuestionOption; success: boolean } | undefined;
+  feedback: { goodAnswer: QuestionOption; success: boolean; timedOut?: boolean } | undefined;
 }
 
 const FeedBack: React.FC<Props> = ({ isOpen, feedback, nextQuiz, onReport, reported }) => {
@@ -28,12 +28,13 @@ const FeedBack: React.FC<Props> = ({ isOpen, feedback, nextQuiz, onReport, repor
             {feedback?.success ? (
               <>
                 <h2>{t('goodAnswer')}</h2>
-                <p>Continuez comme ça !</p>
+                <p>{t('keepItUp')}</p>
               </>
             ) : (
               <>
+                {feedback?.timedOut && <h2 className="feedback-timeout">{t('timeUp')}</h2>}
                 <h4>{t('theGoodAnswerIs')}{feedback?.goodAnswer.name}</h4>
-                <p>Vous ferez mieux la prochaine fois !</p>
+                <p>{t('betterNextTime')}</p>
               </>
             )}
           </div>

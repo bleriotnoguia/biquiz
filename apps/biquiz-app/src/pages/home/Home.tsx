@@ -34,7 +34,7 @@ import {
   sumStars,
 } from "../../utils";
 import { useTranslation } from "react-i18next";
-import CategoriesLoading from "./CategoriesLoading";
+import ListLoading from "../../components/ListLoading";
 import { NetworkError } from "./NetworkError";
 import { Share } from "@capacitor/share";
 import { track } from "../../utils/analytics";
@@ -97,7 +97,7 @@ const Home: React.FC = () => {
 
       <IonContent fullscreen>
         {isLoading ? (
-          <CategoriesLoading />
+          <ListLoading />
         ) : isError ? (
           <NetworkError />
         ) : (

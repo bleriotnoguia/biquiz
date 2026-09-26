@@ -48,6 +48,10 @@ ion-modal#feedback-modal {
   color: var(--ion-color-success);
 }
 
+.feedback-text h2.feedback-timeout {
+  color: var(--ion-color-danger);
+}
+
 .feedback-text h4 {
   margin: 0 0 2px;
   font-size: 1.05rem;

@@ -10,6 +10,8 @@ interface ImportMeta {
   readonly PROD: boolean
 }
 
+declare const __APP_VERSION__: string
+
 declare module '*.module.css' {
   const classes: { [key: string]: string };
   export default classes;
