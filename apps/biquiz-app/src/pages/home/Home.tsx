@@ -8,6 +8,7 @@ import {
   IonIcon,
   IonButton,
   IonAlert,
+  useIonRouter,
 } from "@ionic/react";
 import {
   bookSharp,
@@ -18,13 +19,20 @@ import {
   statsChart,
 } from "ionicons/icons";
 import styles from "./Home.module.css";
-import { useHistory } from "react-router-dom";
 import { useState } from "react";
 import { CategoryConfig } from "@biquiz/shared";
 import { useCategories } from "../../queries/useCategories";
 import { useScoresStore } from "../../stores/useScoresStore";
 import { useQuizStore } from "../../stores/useQuizStore";
-import { getStars, capitalizeFirstLetter } from "../../utils";
+import { useSettingsStore } from "../../stores/useSettingsStore";
+import {
+  getStars,
+  capitalizeFirstLetter,
+  formatStars,
+  sortByLevel,
+  starsRequired,
+  sumStars,
+} from "../../utils";
 import { useTranslation } from "react-i18next";
 import CategoriesLoading from "./CategoriesLoading";
 import { NetworkError } from "./NetworkError";
@@ -33,24 +41,23 @@ import { track } from "../../utils/analytics";
 
 const Home: React.FC = () => {
   const { t } = useTranslation();
+  const language = useSettingsStore((s) => s.language);
   const [showAlert, setShowAlert] = useState(false);
-  const [starsRequired, setStarsRequired] = useState(0);
+  const [lockedRequired, setLockedRequired] = useState(0);
   const { data: categoriesData, isLoading, isError } = useCategories();
   const scores = useScoresStore((s) => s.data);
   const deleteChoices = useQuizStore((s) => s.deleteChoices);
-  const totalStars = scores.length
-    ? scores.reduce((acc, curr) => acc + curr.stars, 0)
-    : 0;
-  const history = useHistory();
+  const totalStars = sumStars(scores);
+  const router = useIonRouter();
 
   function startQuiz(isLock: boolean, category: CategoryConfig) {
     deleteChoices();
     if (isLock) {
-      setStarsRequired((category.level - 1) * 5);
+      setLockedRequired(starsRequired(category.level));
       setShowAlert(true);
     } else {
       track("quiz_start", { category_id: category.id });
-      history.push(`/page/quiz/category/${category.id}`);
+      router.push(`/page/quiz/category/${category.id}`);
     }
   }
 
@@ -71,9 +78,9 @@ const Home: React.FC = () => {
             <b>Biquiz</b>
           </IonTitle>
           <IonButtons slot="end">
-            <IonButton>
+            <IonButton routerLink="/progress" aria-label={t("myProgress") ?? ""}>
               <b style={{ marginRight: "4px", fontSize: "1.1em" }}>
-                {Math.round(totalStars)}
+                {formatStars(totalStars, language)}
               </b>
               <IonIcon icon={starSharp} />
             </IonButton>
@@ -95,10 +102,9 @@ const Home: React.FC = () => {
           <NetworkError />
         ) : (
           <div className={styles.categoriesGrid}>
-            {[...(categoriesData ?? [])]
-              .sort((a, b) => a.level - b.level)
+            {sortByLevel(categoriesData ?? [])
               .map((category, idx) => {
-                const isLock = totalStars < (category.level - 1) * 5;
+                const isLock = totalStars < starsRequired(category.level);
                 const category_score = scores.length
                   ? scores.find(
                       (score) => parseInt(score.category_id) === category?.id,
@@ -151,8 +157,13 @@ const Home: React.FC = () => {
       <IonAlert
         isOpen={showAlert}
         onDidDismiss={() => setShowAlert(false)}
-        header={`${starsRequired} ⭐ requis`}
-        message={`Il vous faut ${starsRequired} étoiles pour débloquer ce niveau !`}
+        header={t("lockedTitle", { count: lockedRequired }) ?? ""}
+        message={
+          t("lockedMessage", {
+            count: lockedRequired,
+            missing: formatStars(lockedRequired - totalStars, language),
+          }) ?? ""
+        }
         buttons={["OK"]}
       />
     </IonPage>

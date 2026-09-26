@@ -1,4 +1,4 @@
-import { Choice, Question, QuestionOption } from "@biquiz/shared";
+import { CategoryConfig, Choice, Question, QuestionOption, Score } from "@biquiz/shared";
 import { starHalfSharp, starOutline, starSharp } from "ionicons/icons";
 import { IonIcon } from "@ionic/react";
 
@@ -8,9 +8,26 @@ export const checkIsCorrect = (item: Choice, questions: Question[]) => {
   return choice?.is_correct;
 };
 
+export const roundToHalf = (value: number) => Math.round(value * 2) / 2;
+
+// Stars are stored rounded like they are displayed, so the unlock threshold matches what the player sees.
+export const computeStars = (correctCount: number, total: number) =>
+  total > 0 ? roundToHalf((correctCount * 5) / total) : 0;
+
+export const STARS_PER_LEVEL = 4;
+
+export const starsRequired = (level: number) => (level - 1) * STARS_PER_LEVEL;
+
+export const sumStars = (scores: Score[]) =>
+  scores.reduce((acc, curr) => acc + roundToHalf(curr.stars), 0);
+
+export const formatStars = (value: number, lang: string) => value.toLocaleString(lang);
+
+export const sortByLevel = (categories: CategoryConfig[]) =>
+  [...categories].sort((a, b) => a.level - b.level);
+
 export const getStars = (rating: number) => {
-  // Round to nearest half
-  rating = Math.round(rating * 2) / 2;
+  rating = roundToHalf(rating);
   let output = [];
   let count = 0;
 

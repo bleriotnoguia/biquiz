@@ -1,5 +1,5 @@
 import {
-  IonBackButton,
+  IonAlert,
   IonButton,
   IonButtons,
   IonContent,
@@ -9,18 +9,21 @@ import {
   IonProgressBar,
   IonTitle,
   IonToolbar,
+  useIonRouter,
+  useIonViewDidEnter,
+  useIonViewWillLeave,
 } from "@ionic/react";
-import { checkmarkCircle, closeCircle, flagOutline } from "ionicons/icons";
+import { arrowBackSharp, checkmarkCircle, closeCircle, flagOutline } from "ionicons/icons";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { QuestionOption } from "@biquiz/shared";
 import { useQuestions } from "../../queries/useQuestions";
 import { useQuizStore } from "../../stores/useQuizStore";
 import { useScoresStore } from "../../stores/useScoresStore";
 import { useSettingsStore } from "../../stores/useSettingsStore";
 import ScriptureReference from "../../components/ScriptureReference";
-import { arrangeOptions, checkIsCorrect, shuffle } from "../../utils";
+import { arrangeOptions, checkIsCorrect, computeStars, shuffle, sumStars } from "../../utils";
 import { track } from "../../utils/analytics";
 import { rememberReportedQuestion, reportedQuestionIds } from "../../utils/reports";
 import QuizLoading from "../home/QuizLoading";
@@ -34,10 +37,9 @@ const QUIZ_LENGTH = 20;
 const Quiz: React.FC = () => {
   const displaySource = useSettingsStore((s) => s.displaySource);
   const language = useSettingsStore((s) => s.language);
-  const { choices, addChoice, setCategoryId } = useQuizStore();
-  const { data, isLoading } = useQuestions(
-    useParams<{ category_id: string }>().category_id
-  );
+  const { choices, addChoice, setCategoryId, deleteChoices, setLastResult } = useQuizStore();
+  const { category_id = '' } = useParams<{ category_id: string }>();
+  const { data, isLoading } = useQuestions(category_id);
   // Memoized on the query data so a background refetch with identical content keeps the order.
   const questions = useMemo(
     () =>
@@ -55,13 +57,37 @@ const Quiz: React.FC = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [reportedIds, setReportedIds] = useState<number[]>(() => reportedQuestionIds());
   const [feedback, setFeedBack] = useState<{ goodAnswer: QuestionOption; success: boolean }>();
+  const [confirmQuitOpen, setConfirmQuitOpen] = useState(false);
+  const [isActive, setIsActive] = useState(false);
   const { t } = useTranslation();
-  const history = useHistory();
-  const { category_id = '' } = useParams<{ category_id: string }>();
+  const router = useIonRouter();
 
   useEffect(() => {
     setCategoryId(category_id);
   }, [category_id, setCategoryId]);
+
+  useIonViewDidEnter(() => setIsActive(true));
+  useIonViewWillLeave(() => setIsActive(false));
+
+  const quit = () => {
+    deleteChoices();
+    if (router.canGoBack()) router.goBack();
+    else router.push('/', 'root', 'replace');
+  };
+
+  const requestQuit = () => {
+    if (choices.length > 0) setConfirmQuitOpen(true);
+    else quit();
+  };
+
+  // Android hardware back button: ask before abandoning a quiz in progress.
+  useEffect(() => {
+    if (!isActive) return;
+    const handler = (ev: Event) =>
+      (ev as CustomEvent<{ register: (priority: number, cb: () => void) => void }>).detail.register(10, requestQuit);
+    document.addEventListener('ionBackButton', handler);
+    return () => document.removeEventListener('ionBackButton', handler);
+  });
 
   function handleSelectOption(optionId: number) {
     if (!questions || questions.length === 0 || !questions[questionIndex] || choiceId !== undefined) return;
@@ -84,18 +110,22 @@ const Quiz: React.FC = () => {
       setQuestionIndex(nextQuizIndex);
     } else {
       const correct_count = choices.filter((item) => checkIsCorrect(item, questions)).length;
-      const stars_won = choices.length > 0 ? (correct_count * 5) / choices.length : 0;
+      const stars_won = computeStars(correct_count, choices.length);
       track('quiz_complete', {
         category_id: Number(category_id),
         correct_count,
         total_count: choices.length,
       });
       const category_score = scores.length ? scores.find(s => s.category_id === category_id) : undefined;
+      setLastResult({
+        previousBest: category_score ? category_score.stars : null,
+        previousTotalStars: sumStars(scores),
+      });
       if (!category_score || category_score.stars < stars_won) {
         setScore({ category_id, stars: stars_won });
       }
       setQuestionIndex(0);
-      history.push('/page/result/' + category_id);
+      router.push('/page/result/' + category_id, 'forward', 'replace');
     }
     setFeedBackIsOpen(false);
     setChoiceId(undefined);
@@ -116,7 +146,9 @@ const Quiz: React.FC = () => {
       <IonHeader>
         <IonToolbar color="primary">
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/" />
+            <IonButton onClick={requestQuit} aria-label={t('backToThemes') ?? ''}>
+              <IonIcon slot="icon-only" icon={arrowBackSharp} />
+            </IonButton>
           </IonButtons>
           <IonTitle>Quiz</IonTitle>
         </IonToolbar>
@@ -130,7 +162,7 @@ const Quiz: React.FC = () => {
             {/* Progress bar */}
             <div className="quiz-progress-wrapper">
               <div className="quiz-progress-label">
-                <span>Progression</span>
+                <span>{t('progress')}</span>
                 <span>{questionIndex + 1} / {questions.length}</span>
               </div>
               <IonProgressBar value={questions.length > 0 ? questionIndex / questions.length : 0} />
@@ -139,7 +171,7 @@ const Quiz: React.FC = () => {
             {/* Question card */}
             <div className="quiz-question-card">
               <div className="quiz-question-counter">
-                <span className="quiz-question-badge">Question {questionIndex + 1}</span>
+                <span className="quiz-question-badge">{t('question')} {questionIndex + 1}</span>
                 {currentQuestion && (
                   <button
                     type="button"
@@ -163,7 +195,7 @@ const Quiz: React.FC = () => {
                     size="small"
                     onClick={() => setShowSource(!showSource)}
                   >
-                    {showSource ? 'Masquer' : t('displaySource')}
+                    {showSource ? t('hideSource') : t('displaySource')}
                   </IonButton>
                   {showSource && (
                     <p className="quiz-source-text">
@@ -204,6 +236,16 @@ const Quiz: React.FC = () => {
         nextQuiz={nextQuiz}
         reported={currentQuestion ? reportedIds.includes(currentQuestion.id) : false}
         onReport={() => setReportOpen(true)}
+      />
+      <IonAlert
+        isOpen={confirmQuitOpen}
+        onDidDismiss={() => setConfirmQuitOpen(false)}
+        header={t('quitQuizTitle') ?? ''}
+        message={t('quitQuizMessage') ?? ''}
+        buttons={[
+          { text: t('quitQuizCancel') ?? '', role: 'cancel' },
+          { text: t('quitQuizConfirm') ?? '', role: 'destructive', handler: quit },
+        ]}
       />
       <ReportQuestion
         isOpen={reportOpen}

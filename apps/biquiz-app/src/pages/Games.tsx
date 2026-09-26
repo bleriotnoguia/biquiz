@@ -1,11 +1,10 @@
-import { IonBackButton, IonButtons, IonContent, IonHeader, IonItem, IonItemDivider, IonLabel, IonList, IonPage, IonTitle, IonToolbar } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
+import { IonBackButton, IonButtons, IonContent, IonHeader, IonItem, IonItemDivider, IonLabel, IonList, IonPage, IonTitle, IonToolbar, useIonRouter } from '@ionic/react';
 import gamesList from '../data/gamesList.json'
 import '../App.css';
 
 const Games: React.FC = () => {
 
-  const history = useHistory()
+  const router = useIonRouter()
 
   return (
     <IonPage>
@@ -24,7 +23,7 @@ const Games: React.FC = () => {
       </IonItemDivider>
       <IonList>
         {gamesList.map((game, idx) => (
-          <IonItem key={idx} onClick={() => history.push("/page/game/"+game.id)}>
+          <IonItem key={idx} onClick={() => router.push("/page/game/"+game.id)}>
             <IonLabel>
               <h3>{game.title}</h3>
               <div className="text-dimgray">

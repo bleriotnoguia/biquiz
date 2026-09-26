@@ -10,7 +10,8 @@ import {
 } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
 import { useEffect } from "react";
-import { Route as RouterRoute, RouteProps, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Route, useLocation } from "react-router-dom";
 import { track } from "./utils/analytics";
 import About from "./pages/About";
 import Answers from "./pages/Answers";
@@ -18,6 +19,7 @@ import GameDetails from "./pages/GameDetails";
 import Games from "./pages/Games";
 import Home from "./pages/home/Home";
 import Quiz from "./pages/quiz/Quiz";
+import Progress from "./pages/Progress";
 import Result from "./pages/Result";
 import Settings from "./pages/Settings";
 import { homeSharp, informationCircle, settingsSharp } from "ionicons/icons";
@@ -33,8 +35,6 @@ import "@ionic/react/css/flex-utils.css";
 import "@ionic/react/css/display.css";
 import "./theme/variables.css";
 
-const Route = RouterRoute as React.ComponentType<RouteProps>;
-
 setupIonicReact();
 
 const PageViewTracker: React.FC = () => {
@@ -46,6 +46,8 @@ const PageViewTracker: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  const { t } = useTranslation();
+
   useEffect(() => {
     track("app_open");
   }, []);
@@ -56,27 +58,28 @@ const App: React.FC = () => {
         <PageViewTracker />
         <IonTabs>
           <IonRouterOutlet>
-            <Route path="/settings" component={Settings} exact />
-            <Route path="/about" component={About} exact />
-            <Route path="/" component={Home} exact />
-            <Route path="/page/quiz/category/:category_id" component={Quiz} />
-            <Route path="/page/result/:category_id" component={Result} />
-            <Route path="/page/answers" component={Answers} />
-            <Route path="/games" component={Games} exact />
-            <Route path="/page/game/:id" component={GameDetails} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/page/quiz/category/:category_id" element={<Quiz />} />
+            <Route path="/page/result/:category_id" element={<Result />} />
+            <Route path="/page/answers" element={<Answers />} />
+            <Route path="/progress" element={<Progress />} />
+            <Route path="/games" element={<Games />} />
+            <Route path="/page/game/:id" element={<GameDetails />} />
           </IonRouterOutlet>
           <IonTabBar slot="bottom">
             <IonTabButton tab="home" href="/">
               <IonIcon icon={homeSharp} />
-              <IonLabel>Home</IonLabel>
+              <IonLabel>{t("home")}</IonLabel>
             </IonTabButton>
             <IonTabButton tab="settings" href="/settings">
               <IonIcon icon={settingsSharp} />
-              <IonLabel>Settings</IonLabel>
+              <IonLabel>{t("settings")}</IonLabel>
             </IonTabButton>
             <IonTabButton tab="about" href="/about">
               <IonIcon icon={informationCircle} />
-              <IonLabel>About</IonLabel>
+              <IonLabel>{t("about")}</IonLabel>
             </IonTabButton>
           </IonTabBar>
         </IonTabs>

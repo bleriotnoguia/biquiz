@@ -41,6 +41,70 @@
   letter-spacing: 4px;
 }
 
+.result-theme-name {
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 16px;
+  text-align: center;
+  letter-spacing: 0.3px;
+}
+
+.result-record-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 4px 12px;
+  border-radius: 99px;
+  background: #FFD700;
+  color: #1a1a2e;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.result-record-badge.muted {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  font-weight: 500;
+}
+
+.result-unlock-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2E7D32 0%, #43A047 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(46, 125, 50, 0.3);
+}
+
+.result-unlock-icon {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+}
+
+.result-unlock-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.result-unlock-names {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.result-next-hint {
+  margin: 0 0 20px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--ion-color-medium);
+}
+
 .result-body {
   padding: 24px 20px;
 }
@@ -57,7 +121,7 @@
 .result-message-title {
   font-size: 1.2rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--ion-text-color, #1a1a2e);
   margin: 0 0 8px;
 }
 

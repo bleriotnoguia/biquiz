@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.bleriotnoguia.biquiz',
   appName: 'Biquiz',
   webDir: 'dist',
-  bundledWebRuntime: false
 };
 
 export default config;
