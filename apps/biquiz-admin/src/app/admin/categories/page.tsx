@@ -10,7 +10,7 @@ import TableCategories from '@/modules/admin/components/Table/Categories'
 const CategoriesPage = () => {
   return (
     <>
-      <SectionMain>
+      <SectionMain wide>
         <SectionTitleLineWithButton icon={mdiTableBorder} title="Categories" main>
           <Button
             href="https://biquiz.bleriotnoguia.com"
