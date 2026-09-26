@@ -19,6 +19,7 @@ import { useQuestions } from "../../queries/useQuestions";
 import { useQuizStore } from "../../stores/useQuizStore";
 import { useScoresStore } from "../../stores/useScoresStore";
 import { useSettingsStore } from "../../stores/useSettingsStore";
+import ScriptureReference from "../../components/ScriptureReference";
 import { arrangeOptions, checkIsCorrect, shuffle } from "../../utils";
 import { track } from "../../utils/analytics";
 import QuizLoading from "../home/QuizLoading";
@@ -30,6 +31,7 @@ const QUIZ_LENGTH = 20;
 
 const Quiz: React.FC = () => {
   const displaySource = useSettingsStore((s) => s.displaySource);
+  const language = useSettingsStore((s) => s.language);
   const { choices, addChoice, setCategoryId } = useQuizStore();
   const { data, isLoading } = useQuestions(
     useParams<{ category_id: string }>().category_id
@@ -149,7 +151,9 @@ const Quiz: React.FC = () => {
                     {showSource ? 'Masquer' : t('displaySource')}
                   </IonButton>
                   {showSource && (
-                    <p className="quiz-source-text">{currentQuestion?.source_text}</p>
+                    <p className="quiz-source-text">
+                      <ScriptureReference reference={currentQuestion?.source_text ?? ""} lang={language} />
+                    </p>
                   )}
                 </>
               )}

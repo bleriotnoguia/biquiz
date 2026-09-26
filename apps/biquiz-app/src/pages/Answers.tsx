@@ -3,7 +3,9 @@ import { checkboxSharp, checkmarkSharp, closeSharp, stopOutline } from 'ionicons
 import { Choice, QuestionOption } from '@biquiz/shared';
 import { useQuizStore } from '../stores/useQuizStore';
 import { useQuestions } from '../queries/useQuestions';
+import ScriptureReference from '../components/ScriptureReference';
 import { checkIsCorrect } from '../utils';
+import { useSettingsStore } from '../stores/useSettingsStore';
 import '../App.css';
 import { useTranslation } from 'react-i18next';
 
@@ -12,6 +14,7 @@ const Answers: React.FC = () => {
   const categoryId = useQuizStore((s) => s.categoryId);
   const { data: allQuestions = [] } = useQuestions(categoryId);
   const { t } = useTranslation();
+  const language = useSettingsStore((s) => s.language);
   const questions = [...choices]
     .reverse()
     .map((c) => allQuestions.find((q) => q.id === c.question_id))
@@ -67,7 +70,7 @@ const Answers: React.FC = () => {
                 </IonItem>
               ))}
               <IonItemDivider>
-                Source : {item.source_text}
+                Source : <ScriptureReference reference={item.source_text} lang={language} />
               </IonItemDivider>
             </div>
           ))}
