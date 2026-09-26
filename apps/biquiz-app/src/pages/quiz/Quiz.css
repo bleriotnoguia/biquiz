@@ -145,6 +145,23 @@
   letter-spacing: 1px;
 }
 
+.quiz-report-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #c5c5c5;
+  font-size: 1rem;
+}
+
+.quiz-report-icon:disabled {
+  cursor: default;
+}
+
 .quiz-source-text {
   font-size: 0.82rem;
   color: #666;

@@ -25,7 +25,7 @@ const uuid = (): string => {
   );
 };
 
-const getDeviceId = (): string => {
+export const getDeviceId = (): string => {
   try {
     const existing = localStorage.getItem(DEVICE_KEY);
     if (existing) return existing;

@@ -10,7 +10,7 @@ import {
   IonTitle,
   IonToolbar,
 } from "@ionic/react";
-import { checkmarkCircle, closeCircle } from "ionicons/icons";
+import { checkmarkCircle, closeCircle, flagOutline } from "ionicons/icons";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useHistory } from "react-router-dom";
@@ -22,8 +22,10 @@ import { useSettingsStore } from "../../stores/useSettingsStore";
 import ScriptureReference from "../../components/ScriptureReference";
 import { arrangeOptions, checkIsCorrect, shuffle } from "../../utils";
 import { track } from "../../utils/analytics";
+import { rememberReportedQuestion, reportedQuestionIds } from "../../utils/reports";
 import QuizLoading from "../home/QuizLoading";
 import FeedBack from "./FeedBack";
+import ReportQuestion from "./ReportQuestion";
 import "./Quiz.css";
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -50,6 +52,8 @@ const Quiz: React.FC = () => {
   const [choiceId, setChoiceId] = useState<undefined | number>(undefined);
   const [feedBackIsOpen, setFeedBackIsOpen] = useState(false);
   const [showSource, setShowSource] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportedIds, setReportedIds] = useState<number[]>(() => reportedQuestionIds());
   const [feedback, setFeedBack] = useState<{ goodAnswer: QuestionOption; success: boolean }>();
   const { t } = useTranslation();
   const history = useHistory();
@@ -136,6 +140,17 @@ const Quiz: React.FC = () => {
             <div className="quiz-question-card">
               <div className="quiz-question-counter">
                 <span className="quiz-question-badge">Question {questionIndex + 1}</span>
+                {currentQuestion && (
+                  <button
+                    type="button"
+                    className="quiz-report-icon"
+                    aria-label={(reportedIds.includes(currentQuestion.id) ? t("reportSent") : t("reportError")) ?? ""}
+                    disabled={reportedIds.includes(currentQuestion.id)}
+                    onClick={() => setReportOpen(true)}
+                  >
+                    <IonIcon icon={reportedIds.includes(currentQuestion.id) ? checkmarkCircle : flagOutline} />
+                  </button>
+                )}
               </div>
               <p className="quiz-question-text">
                 {currentQuestion?.name ?? ''}
@@ -187,6 +202,19 @@ const Quiz: React.FC = () => {
         handleCloseModal={() => setFeedBackIsOpen(false)}
         isOpen={feedBackIsOpen}
         nextQuiz={nextQuiz}
+        reported={currentQuestion ? reportedIds.includes(currentQuestion.id) : false}
+        onReport={() => setReportOpen(true)}
+      />
+      <ReportQuestion
+        isOpen={reportOpen}
+        questionId={currentQuestion?.id}
+        locale={language}
+        onClose={() => setReportOpen(false)}
+        onSent={() => {
+          if (!currentQuestion) return;
+          rememberReportedQuestion(currentQuestion.id);
+          setReportedIds((ids) => (ids.includes(currentQuestion.id) ? ids : [...ids, currentQuestion.id]));
+        }}
       />
     </IonPage>
   );

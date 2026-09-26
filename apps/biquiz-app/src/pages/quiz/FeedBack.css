@@ -61,6 +61,16 @@ ion-modal#feedback-modal {
   color: #888;
 }
 
+.feedback-report-link {
+  display: block;
+  margin: 10px auto 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #aaa;
+  font-size: 0.78rem;
+}
+
 .feedback-continue-btn {
   width: 100%;
   height: 52px;

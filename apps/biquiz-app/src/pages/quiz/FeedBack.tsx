@@ -8,11 +8,13 @@ import { useTranslation } from 'react-i18next';
 interface Props {
   handleCloseModal: () => void;
   nextQuiz: () => void;
+  onReport: () => void;
+  reported: boolean;
   isOpen: boolean;
   feedback: { goodAnswer: QuestionOption; success: boolean } | undefined;
 }
 
-const FeedBack: React.FC<Props> = ({ isOpen, feedback, nextQuiz }) => {
+const FeedBack: React.FC<Props> = ({ isOpen, feedback, nextQuiz, onReport, reported }) => {
   const { t } = useTranslation();
 
   return (
@@ -45,6 +47,11 @@ const FeedBack: React.FC<Props> = ({ isOpen, feedback, nextQuiz }) => {
         >
           {t('continue')}
         </IonButton>
+        {!reported && (
+          <button type="button" className="feedback-report-link" onClick={onReport}>
+            {t('reportError')}
+          </button>
+        )}
       </div>
     </IonModal>
   );

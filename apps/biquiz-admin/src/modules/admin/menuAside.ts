@@ -4,6 +4,7 @@ import {
   mdiHelpCircleOutline,
   mdiTagMultiple,
   mdiUpload,
+  mdiFlagOutline,
 } from '@mdi/js'
 import { MenuAsideItem } from './interfaces'
 
@@ -27,6 +28,11 @@ const menuAside: MenuAsideItem[] = [
     href: '/admin/import',
     label: 'Import',
     icon: mdiUpload,
+  },
+  {
+    href: '/admin/reports',
+    label: 'Reports',
+    icon: mdiFlagOutline,
   },
   {
     href: '/admin/profile',
