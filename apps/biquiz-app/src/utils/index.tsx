@@ -1,4 +1,4 @@
-import { Choice, Question } from "@biquiz/shared";
+import { Choice, Question, QuestionOption } from "@biquiz/shared";
 import { starHalfSharp, starOutline, starSharp } from "ionicons/icons";
 import { IonIcon } from "@ionic/react";
 
@@ -35,6 +35,15 @@ export const shuffle = <T,>(items: T[]): T[] => {
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy;
+};
+
+const TRUE_LABELS = ["vrai", "true"];
+
+// True/false answers keep a fixed "Vrai" then "Faux" order; other questions are shuffled.
+export const arrangeOptions = (question: Question): QuestionOption[] => {
+  if (question.type !== "true_false") return shuffle(question.options);
+  const isTrue = (o: QuestionOption) => TRUE_LABELS.includes(o.name.trim().toLowerCase());
+  return [...question.options].sort((a, b) => Number(isTrue(b)) - Number(isTrue(a)));
 };
 
 export const capitalizeFirstLetter = (text: string) => {

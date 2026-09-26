@@ -19,7 +19,7 @@ import { useQuestions } from "../../queries/useQuestions";
 import { useQuizStore } from "../../stores/useQuizStore";
 import { useScoresStore } from "../../stores/useScoresStore";
 import { useSettingsStore } from "../../stores/useSettingsStore";
-import { checkIsCorrect, shuffle } from "../../utils";
+import { arrangeOptions, checkIsCorrect, shuffle } from "../../utils";
 import { track } from "../../utils/analytics";
 import QuizLoading from "../home/QuizLoading";
 import FeedBack from "./FeedBack";
@@ -39,7 +39,7 @@ const Quiz: React.FC = () => {
     () =>
       shuffle(data ?? [])
         .slice(0, QUIZ_LENGTH)
-        .map((q) => ({ ...q, options: shuffle(q.options) })),
+        .map((q) => ({ ...q, options: arrangeOptions(q) })),
     [data]
   );
   const setScore = useScoresStore((s) => s.setScore);

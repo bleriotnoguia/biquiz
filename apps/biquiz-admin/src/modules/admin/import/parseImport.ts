@@ -1,3 +1,7 @@
+export const QUESTION_TYPES = ['multiple_choice_single_answer', 'true_false'] as const
+
+export type QuestionTypeCode = (typeof QUESTION_TYPES)[number]
+
 export type ImportOption = {
   name_fr: string
   name_en?: string
@@ -5,6 +9,7 @@ export type ImportOption = {
 }
 
 export type ImportQuestion = {
+  type?: string
   name_fr: string
   name_en?: string
   source_text_fr?: string
@@ -14,6 +19,7 @@ export type ImportQuestion = {
 
 export type ImportTheme = {
   category_id?: number
+  key?: string
   name_fr: string
   name_en?: string
   level?: number
@@ -27,6 +33,7 @@ export type ImportPayload = {
 export type ParseResult = {
   payload: ImportPayload
   errors: string[]
+  warnings: string[]
 }
 
 export const MAX_OPTIONS = 6
@@ -43,6 +50,56 @@ const toOptionalInt = (value: unknown): number | undefined => {
   return Number.isFinite(n) ? n : undefined
 }
 
+// Mirrors public.normalize_text() in the Supabase migrations: same rules on both sides so the
+// preview and the import agree on what counts as a duplicate.
+export const normalizeText = (value: string | undefined): string =>
+  (value ?? '')
+    .toLowerCase()
+    .replace(/[’‘ʼ`´]/g, "'")
+    .replace(/[“”„«»]/g, '"')
+    .replace(/[\u00a0\u202f\u2009]/g, ' ')
+    .replace(/\s*"\s*/g, '"')
+    .replace(/\s+([?!:;.,])/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+export const detectQuestionType = (question: ImportQuestion): string => {
+  if (question.type) return question.type
+  const labels = question.options.map((o) => normalizeText(o.name_fr)).sort()
+  const isTrueFalse = ['faux,vrai', 'false,true'].includes(labels.join(','))
+  return isTrueFalse ? 'true_false' : 'multiple_choice_single_answer'
+}
+
+export type ExistingCategory = {
+  id: number
+  level: number
+  source_key?: string | null
+  translate: { locale: string; name: string }[] | null
+}
+
+// Same resolution order as public.import_questions(): category_id, then key, then name.
+// With a key, the name fallback ignores categories that already carry another key.
+export const resolveTheme = (theme: ImportTheme, categories: ExistingCategory[]) => {
+  if (theme.category_id) return categories.find((c) => c.id === theme.category_id)
+  if (theme.key) {
+    const byKey = categories.find((c) => c.source_key === theme.key)
+    if (byKey) return byKey
+  }
+  const names = [theme.name_fr, theme.name_en].filter(Boolean).map((n) => normalizeText(n))
+  return categories.find(
+    (c) =>
+      (!theme.key || !c.source_key) && c.translate?.some((t) => names.includes(normalizeText(t.name)))
+  )
+}
+
+export const findHomonyms = (theme: ImportTheme, categories: ExistingCategory[]) => {
+  const target = resolveTheme(theme, categories)
+  const name = normalizeText(theme.name_fr)
+  return categories.filter(
+    (c) => c.id !== target?.id && c.translate?.some((t) => normalizeText(t.name) === name)
+  )
+}
+
 export const validatePayload = (payload: ImportPayload): string[] => {
   const errors: string[] = []
 
@@ -55,8 +112,15 @@ export const validatePayload = (payload: ImportPayload): string[] => {
 
     theme.questions.forEach((q, i) => {
       const where = `Theme ${label}, question #${i + 1}`
+      const type = detectQuestionType(q)
       if (!q.name_fr) errors.push(`${where}: "name_fr" is required.`)
+      if (!(QUESTION_TYPES as readonly string[]).includes(type)) {
+        errors.push(`${where}: unsupported type "${type}" (expected ${QUESTION_TYPES.join(' or ')}).`)
+      }
       if (q.options.length < 2) errors.push(`${where}: at least 2 options are required.`)
+      if (type === 'true_false' && q.options.length !== 2) {
+        errors.push(`${where}: a true_false question needs exactly 2 options.`)
+      }
       if (q.options.some((o) => !o.name_fr)) errors.push(`${where}: every option needs a "name_fr".`)
       const correct = q.options.filter((o) => o.is_correct).length
       if (correct !== 1) errors.push(`${where}: exactly one correct option expected (found ${correct}).`)
@@ -64,6 +128,38 @@ export const validatePayload = (payload: ImportPayload): string[] => {
   })
 
   return errors
+}
+
+export const collectWarnings = (payload: ImportPayload): string[] => {
+  const warnings: string[] = []
+
+  const byName = new Map<string, ImportTheme[]>()
+  payload.themes.forEach((theme) => {
+    const name = normalizeText(theme.name_fr)
+    if (name) byName.set(name, [...(byName.get(name) ?? []), theme])
+  })
+  byName.forEach((themes) => {
+    if (themes.length < 2) return
+    const keys = new Set(themes.map((t) => t.key ?? ''))
+    warnings.push(
+      keys.size === themes.length && !keys.has('')
+        ? `${themes.length} themes are named "${themes[0].name_fr}": they stay separate (distinct keys) but look identical in the app. Consider renaming them (e.g. "${themes[0].name_fr} II").`
+        : `${themes.length} themes are named "${themes[0].name_fr}" without distinct keys: they will be merged into one theme.`
+    )
+  })
+
+  payload.themes.forEach((theme) => {
+    const seen = new Set<string>()
+    theme.questions.forEach((q, i) => {
+      const name = normalizeText(q.name_fr)
+      if (seen.has(name)) {
+        warnings.push(`Theme ${theme.name_fr}, question #${i + 1}: duplicate of an earlier question, it will be skipped.`)
+      }
+      seen.add(name)
+    })
+  })
+
+  return warnings
 }
 
 const normalizeJson = (raw: unknown): ImportPayload => {
@@ -77,6 +173,7 @@ const normalizeJson = (raw: unknown): ImportPayload => {
       const questions = Array.isArray(theme.questions) ? theme.questions : []
       return {
         category_id: toOptionalInt(theme.category_id),
+        key: str(theme.key) || undefined,
         name_fr: str(theme.name_fr),
         name_en: str(theme.name_en) || undefined,
         level: toOptionalInt(theme.level),
@@ -84,6 +181,7 @@ const normalizeJson = (raw: unknown): ImportPayload => {
           const question = q as Record<string, unknown>
           const options = Array.isArray(question.options) ? question.options : []
           return {
+            type: str(question.type) || undefined,
             name_fr: str(question.name_fr),
             name_en: str(question.name_en) || undefined,
             source_text_fr: str(question.source_text_fr) || undefined,
@@ -157,7 +255,7 @@ const parseCorrect = (value: string, optionCount: number): number => {
   return n >= 1 && n <= optionCount ? n : -1
 }
 
-const normalizeCsv = (text: string): ParseResult => {
+const normalizeCsv = (text: string): { payload: ImportPayload; errors: string[] } => {
   const rows = parseCsvRows(text)
   if (rows.length < 2) throw new Error('CSV must contain a header row and at least one question.')
 
@@ -186,9 +284,11 @@ const normalizeCsv = (text: string): ParseResult => {
     else options[correct - 1].is_correct = true
 
     const themeFr = get('theme_fr')
-    const key = themeFr.toLowerCase()
-    if (!themes.has(key)) {
-      themes.set(key, {
+    const themeKey = get('theme_key')
+    const groupKey = themeKey ? `key:${themeKey}` : `name:${normalizeText(themeFr)}`
+    if (!themes.has(groupKey)) {
+      themes.set(groupKey, {
+        key: themeKey || undefined,
         name_fr: themeFr,
         name_en: get('theme_en') || undefined,
         level: toOptionalInt(get('theme_level')),
@@ -196,7 +296,8 @@ const normalizeCsv = (text: string): ParseResult => {
       })
     }
 
-    themes.get(key)!.questions.push({
+    themes.get(groupKey)!.questions.push({
+      type: get('type') || undefined,
       name_fr: get('question_fr'),
       name_en: get('question_en') || undefined,
       source_text_fr: get('source_fr') || undefined,
@@ -213,14 +314,12 @@ export const parseImportFile = (fileName: string, text: string): ParseResult => 
   const isJson = fileName.toLowerCase().endsWith('.json') || /^\s*[[{]/.test(content)
 
   try {
-    if (isJson) {
-      const payload = normalizeJson(JSON.parse(content))
-      return { payload, errors: validatePayload(payload) }
-    }
-    const { payload, errors } = normalizeCsv(content)
-    return { payload, errors: [...errors, ...validatePayload(payload)] }
+    const { payload, errors } = isJson
+      ? { payload: normalizeJson(JSON.parse(content)), errors: [] as string[] }
+      : normalizeCsv(content)
+    return { payload, errors: [...errors, ...validatePayload(payload)], warnings: collectWarnings(payload) }
   } catch (e) {
-    return { payload: { themes: [] }, errors: [(e as Error).message] }
+    return { payload: { themes: [] }, errors: [(e as Error).message], warnings: [] }
   }
 }
 
@@ -234,11 +333,14 @@ export const CSV_HEADER = [
   'source_en',
   ...Array.from({ length: 4 }, (_, i) => [`option${i + 1}_fr`, `option${i + 1}_en`]).flat(),
   'correct',
+  'theme_key',
+  'type',
 ]
 
 export const JSON_TEMPLATE: ImportPayload = {
   themes: [
     {
+      key: 'my-source-1',
       level: 1,
       name_fr: 'Hommes',
       name_en: 'Men',
@@ -257,15 +359,36 @@ export const JSON_TEMPLATE: ImportPayload = {
         },
       ],
     },
+    {
+      key: 'my-source-6',
+      level: 6,
+      name_fr: 'Vrai ou Faux',
+      name_en: 'True or False',
+      questions: [
+        {
+          type: 'true_false',
+          name_fr: 'Jonas a été avalé par un grand poisson.',
+          name_en: 'Jonah was swallowed by a huge fish.',
+          source_text_fr: 'Jonas 1:17',
+          source_text_en: 'Jonah 1:17',
+          options: [
+            { name_fr: 'Vrai', name_en: 'True', is_correct: true },
+            { name_fr: 'Faux', name_en: 'False', is_correct: false },
+          ],
+        },
+      ],
+    },
   ],
 }
 
 const csvCell = (value: string | number) => {
   const s = String(value)
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  return /[",;\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
-export const CSV_TEMPLATE = [
+export const toCsv = (rows: (string | number)[][]) => rows.map((row) => row.map(csvCell).join(',')).join('\n')
+
+export const CSV_TEMPLATE = toCsv([
   CSV_HEADER,
   [
     1,
@@ -284,7 +407,27 @@ export const CSV_TEMPLATE = [
     'Esdras',
     'Ezra',
     4,
+    'my-source-1',
+    '',
   ],
-]
-  .map((row) => row.map(csvCell).join(','))
-  .join('\n')
+  [
+    6,
+    'Vrai ou Faux',
+    'True or False',
+    'Jonas a été avalé par un grand poisson.',
+    'Jonah was swallowed by a huge fish.',
+    'Jonas 1:17',
+    'Jonah 1:17',
+    'Vrai',
+    'True',
+    'Faux',
+    'False',
+    '',
+    '',
+    '',
+    '',
+    1,
+    'my-source-6',
+    'true_false',
+  ],
+])

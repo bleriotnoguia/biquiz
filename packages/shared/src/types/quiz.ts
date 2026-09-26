@@ -14,6 +14,7 @@ export interface QuestionOption {
 
 export interface Question {
   id: number
+  type: string
   name: string
   source_text: string
   options: QuestionOption[]

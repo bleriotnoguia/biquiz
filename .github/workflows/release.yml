@@ -6,22 +6,20 @@ on:
       - "v*"
 
 jobs:
-  build-web-android:
+  build-android:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -34,28 +32,42 @@ jobs:
 
       - name: Build web project
         run: pnpm --filter biquiz-app build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
 
       - name: Ensure Android project exists
         working-directory: apps/biquiz-app
         run: |
           if [ ! -d android ]; then
-            npx cap add android
+            pnpm exec cap add android
           fi
 
       - name: Sync Capacitor
         working-directory: apps/biquiz-app
-        run: npx cap sync android
+        run: pnpm exec cap sync android
+
+      - name: Set app version from tag
+        working-directory: apps/biquiz-app/android/app
+        run: |
+          VERSION_NAME="${GITHUB_REF_NAME#v}"
+          sed -i -E "s/versionCode [0-9]+/versionCode ${{ github.run_number }}/" build.gradle
+          sed -i -E "s/versionName \"[^\"]*\"/versionName \"${VERSION_NAME}\"/" build.gradle
 
       - name: Decode Keystore
-        working-directory: apps/biquiz-app
-        run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
 
-      - name: Build Android APK
+      - name: Build signed Android APK
         working-directory: apps/biquiz-app/android
-        run: ./gradlew assembleRelease
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file="$RUNNER_TEMP/release.keystore" \
+            -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
+          mv app/build/outputs/apk/release/app-release.apk "app/build/outputs/apk/release/biquiz-${GITHUB_REF_NAME}.apk"
         env:
-          ANDROID_KEYSTORE_FILE: ${{ github.workspace }}/apps/biquiz-app/android/app/release.keystore
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -64,18 +76,16 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: apps/biquiz-app/android/app/build/outputs/apk/release/app-release.apk
+          path: apps/biquiz-app/android/app/build/outputs/apk/release/biquiz-*.apk
+          if-no-files-found: error
 
   create-release:
-    needs: [build-web-android]
+    needs: [build-android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Download Android APK
         uses: actions/download-artifact@v4
         with:
@@ -83,10 +93,7 @@ jobs:
           path: ./artifacts/android
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          files: |
-            artifacts/**/*
+          files: artifacts/android/*.apk
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

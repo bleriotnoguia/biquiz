@@ -11,12 +11,14 @@ import SectionTitleLineWithButton from '@/modules/admin/components/Section/Title
 import { supabase } from '@/config/supabase'
 import {
   CSV_TEMPLATE,
+  detectQuestionType,
+  ExistingCategory,
+  findHomonyms,
   ImportPayload,
   JSON_TEMPLATE,
   parseImportFile,
+  resolveTheme,
 } from '@/modules/admin/import/parseImport'
-
-type Category = { id: number; level: number; translate: { locale: string; name: string }[] | null }
 
 type ImportResult = {
   categories_created: number
@@ -38,7 +40,8 @@ const ImportPage = () => {
   const [fileName, setFileName] = useState('')
   const [payload, setPayload] = useState<ImportPayload | null>(null)
   const [errors, setErrors] = useState<string[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
+  const [parseWarnings, setParseWarnings] = useState<string[]>([])
+  const [categories, setCategories] = useState<ExistingCategory[]>([])
   const [isImporting, setIsImporting] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -49,19 +52,32 @@ const ImportPage = () => {
   }
 
   useEffect(() => {
-    fetchCategories()
+    let active = true
+    supabase.rpc('get_categories').then(({ data }) => {
+      if (active) setCategories(data ?? [])
+    })
+    return () => {
+      active = false
+    }
   }, [])
-
-  const findCategory = (id: number | undefined, nameFr: string, nameEn?: string) => {
-    if (id) return categories.find((c) => c.id === id)
-    const names = [nameFr, nameEn].filter(Boolean).map((n) => n!.toLowerCase())
-    return categories.find((c) => c.translate?.some((t) => names.includes(t.name.trim().toLowerCase())))
-  }
 
   const totalQuestions = useMemo(
     () => payload?.themes.reduce((acc, t) => acc + t.questions.length, 0) ?? 0,
     [payload]
   )
+
+  const warnings = useMemo(() => {
+    const homonyms = (payload?.themes ?? []).flatMap((theme) => {
+      if (resolveTheme(theme, categories)) return []
+      return findHomonyms(theme, categories).map(
+        (c) =>
+          `Theme "${theme.name_fr}" will be created although theme #${c.id} already has this name${
+            c.source_key ? ` (key ${c.source_key})` : ''
+          }. Consider renaming it (e.g. "${theme.name_fr} II").`
+      )
+    })
+    return [...parseWarnings, ...homonyms]
+  }, [payload, categories, parseWarnings])
 
   const handleFile = async (file: File) => {
     setResult(null)
@@ -69,11 +85,13 @@ const ImportPage = () => {
     const parsed = parseImportFile(file.name, await file.text())
     setPayload(parsed.payload)
     setErrors(parsed.errors)
+    setParseWarnings(parsed.warnings)
   }
 
   const reset = () => {
     setPayload(null)
     setErrors([])
+    setParseWarnings([])
     setFileName('')
     setResult(null)
     if (inputRef.current) inputRef.current.value = ''
@@ -140,9 +158,11 @@ const ImportPage = () => {
           <span className="font-medium text-slate-700 dark:text-slate-200">
             {fileName || 'Drop a .json or .csv file here, or click to browse'}
           </span>
-          <span className="text-xs text-slate-400">
-            Themes are matched by name (created if missing). Questions already present in a theme are skipped.
-            Missing English values fall back to French.
+          <span className="text-xs text-slate-400 max-w-2xl">
+            Themes are matched by key (<code>key</code> / <code>theme_key</code>) when provided, otherwise by name, and
+            created if missing; the level only applies to new themes. Questions already present in a theme are skipped
+            (case, apostrophes, quotes and spacing are ignored). Questions whose two options are Vrai/Faux become
+            true/false questions unless <code>type</code> says otherwise. Missing English values fall back to French.
           </span>
           <input
             ref={inputRef}
@@ -168,6 +188,22 @@ const ImportPage = () => {
           <ul className="max-h-64 overflow-auto space-y-1 text-sm text-red-600 dark:text-red-400 font-mono">
             {errors.slice(0, 200).map((e, i) => (
               <li key={i}>{e}</li>
+            ))}
+          </ul>
+        </CardBox>
+      )}
+
+      {warnings.length > 0 && (
+        <CardBox className="mb-6">
+          <div className="flex items-center gap-2 mb-3 text-amber-600 dark:text-amber-400">
+            <Icon path={mdiAlertCircleOutline} size="20" w="" h="" />
+            <h3 className="font-semibold">
+              {warnings.length} warning{warnings.length > 1 ? 's' : ''} — the import can still run
+            </h3>
+          </div>
+          <ul className="max-h-64 overflow-auto space-y-1 text-sm text-amber-700 dark:text-amber-400">
+            {warnings.map((w, i) => (
+              <li key={i}>{w}</li>
             ))}
           </ul>
         </CardBox>
@@ -212,12 +248,14 @@ const ImportPage = () => {
                 <th>Theme (EN)</th>
                 <th>Level</th>
                 <th>Questions</th>
+                <th>Key</th>
                 <th>Target</th>
               </tr>
             </thead>
             <tbody>
               {payload.themes.map((theme, i) => {
-                const existing = findCategory(theme.category_id, theme.name_fr, theme.name_en)
+                const existing = resolveTheme(theme, categories)
+                const trueFalse = theme.questions.filter((q) => detectQuestionType(q) === 'true_false').length
                 return (
                   <tr key={i}>
                     <td data-label="Theme (FR)">
@@ -247,7 +285,13 @@ const ImportPage = () => {
                     </td>
                     <td data-label="Theme (EN)">{theme.name_en ?? '—'}</td>
                     <td data-label="Level">{existing?.level ?? theme.level ?? 'auto'}</td>
-                    <td data-label="Questions">{theme.questions.length}</td>
+                    <td data-label="Questions">
+                      {theme.questions.length}
+                      {trueFalse > 0 && <span className="ml-1 text-xs text-slate-400">({trueFalse} true/false)</span>}
+                    </td>
+                    <td data-label="Key">
+                      <span className="text-xs font-mono text-slate-500">{theme.key ?? '—'}</span>
+                    </td>
                     <td data-label="Target">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
