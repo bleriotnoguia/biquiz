@@ -33,7 +33,7 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (isLoggedInUser || isLoggedInSession) {
-      router.push('/')
+      router.push('/admin')
     }
   }, [isLoggedInSession, isLoggedInUser, router])
 
