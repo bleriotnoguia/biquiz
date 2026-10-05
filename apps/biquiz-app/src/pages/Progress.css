@@ -64,12 +64,13 @@
 .progress-links {
   display: flex;
   flex-wrap: wrap;
-  margin: 2px 0 0 -10px;
+  column-gap: 16px;
+  margin-top: 4px;
 }
 
 .progress-links ion-button {
-  --padding-start: 10px;
-  --padding-end: 10px;
+  --padding-start: 0;
+  --padding-end: 0;
   margin: 0;
   font-size: 0.8rem;
 }
