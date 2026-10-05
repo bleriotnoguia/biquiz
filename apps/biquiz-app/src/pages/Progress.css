@@ -40,21 +40,50 @@
   color: var(--ion-color-medium);
 }
 
-.progress-lock {
-  margin-left: 6px;
-  font-size: 0.9rem;
-  vertical-align: middle;
-  color: var(--ion-color-medium);
+.progress-item ion-button {
+  text-transform: none;
+  letter-spacing: normal;
 }
 
-.progress-actions {
+.progress-item-locked h2,
+.progress-item-locked p {
+  color: var(--ion-color-medium) !important;
+}
+
+.progress-lock {
+  font-size: 1.1rem;
+  color: var(--ion-color-medium);
+  margin-inline-end: 12px;
+}
+
+.progress-play {
+  --border-radius: 99px;
+  font-weight: 600;
+}
+
+.progress-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
+  margin: 2px 0 0 -10px;
+}
+
+.progress-links ion-button {
+  --padding-start: 10px;
+  --padding-end: 10px;
+  margin: 0;
+  font-size: 0.8rem;
 }
 
 .progress-stars {
+  display: flex;
+  align-items: center;
+  gap: 1px;
   color: #FFD700 !important;
   font-size: 1rem;
+}
+
+.progress-stars-value {
+  margin-left: 6px;
+  font-size: 0.8rem;
+  color: var(--ion-color-medium);
 }

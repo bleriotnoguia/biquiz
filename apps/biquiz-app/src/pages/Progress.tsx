@@ -14,7 +14,7 @@ import {
   IonToolbar,
   useIonRouter,
 } from '@ionic/react';
-import { eyeSharp, lockClosed, playSharp, schoolSharp, starSharp } from 'ionicons/icons';
+import { eyeOutline, lockClosed, playSharp, refreshOutline, starSharp } from 'ionicons/icons';
 import { useHistoryStore } from '../stores/useHistoryStore';
 import { useTranslation } from 'react-i18next';
 import { useCategories } from '../queries/useCategories';
@@ -93,39 +93,49 @@ const Progress: React.FC = () => {
             const stars = scores.find((s) => parseInt(s.category_id) === category.id)?.stars ?? 0;
             const attempt = attempts[String(category.id)];
             const mistakes = attempt?.mistakeIds.length ?? 0;
+            if (isLock) {
+              return (
+                <IonItem key={category.id} lines="full" className="progress-item progress-item-locked">
+                  <IonIcon icon={lockClosed} slot="start" className="progress-lock" />
+                  <IonLabel>
+                    <h2>{capitalizeFirstLetter(category.name)}</h2>
+                    <p>
+                      {t('lockedMissing', {
+                        count: required - totalStars,
+                        missing: formatStars(required - totalStars, language),
+                      })}
+                    </p>
+                  </IonLabel>
+                </IonItem>
+              );
+            }
             return (
-              <IonItem key={category.id} lines="full">
+              <IonItem key={category.id} lines="full" className="progress-item">
                 <IonLabel>
-                  <h2>
-                    {capitalizeFirstLetter(category.name)}
-                    {isLock && <IonIcon icon={lockClosed} className="progress-lock" />}
-                  </h2>
-                  {isLock ? (
-                    <p>{t('lockedTitle', { count: required })}</p>
-                  ) : (
-                    <>
-                      <p className="progress-stars">{getStars(stars)}</p>
-                      <div className="progress-actions">
-                        <IonButton size="small" onClick={() => startQuiz(category.id)}>
-                          <IonIcon icon={playSharp} slot="start" />
-                          {t('play')}
+                  <h2>{capitalizeFirstLetter(category.name)}</h2>
+                  <p className="progress-stars" aria-label={t('bestStars', { stars: formatStars(stars, language) }) ?? ''}>
+                    {getStars(stars)}
+                    <span className="progress-stars-value">{formatStars(stars, language)}/5</span>
+                  </p>
+                  {attempt && (
+                    <div className="progress-links">
+                      <IonButton fill="clear" size="small" routerLink={`/page/answers/${category.id}`}>
+                        <IonIcon icon={eyeOutline} slot="start" />
+                        {t('seeAnswers')}
+                      </IonButton>
+                      {mistakes > 0 && (
+                        <IonButton fill="clear" size="small" color="warning" onClick={() => startReview(category.id)}>
+                          <IonIcon icon={refreshOutline} slot="start" />
+                          {t('reviewMistakes', { count: mistakes })}
                         </IonButton>
-                        {attempt && (
-                          <IonButton size="small" fill="outline" routerLink={`/page/answers/${category.id}`}>
-                            <IonIcon icon={eyeSharp} slot="start" />
-                            {t('myAnswers')}
-                          </IonButton>
-                        )}
-                        {mistakes > 0 && (
-                          <IonButton size="small" fill="outline" color="warning" onClick={() => startReview(category.id)}>
-                            <IonIcon icon={schoolSharp} slot="start" />
-                            {t('mistakesCount', { count: mistakes })}
-                          </IonButton>
-                        )}
-                      </div>
-                    </>
+                      )}
+                    </div>
                   )}
                 </IonLabel>
+                <IonButton slot="end" className="progress-play" onClick={() => startQuiz(category.id)}>
+                  <IonIcon icon={playSharp} slot="start" />
+                  {t('play')}
+                </IonButton>
               </IonItem>
             );
           })}
