@@ -75,6 +75,11 @@
   font-size: 0.8rem;
 }
 
+.progress-links ion-icon[slot="start"] {
+  margin-inline-start: 0;
+  margin-inline-end: 4px;
+}
+
 .progress-stars {
   display: flex;
   align-items: center;
